@@ -1,7 +1,7 @@
 # Reenable DSU Buttons on Rav4
 I noticed the following distance and Lane Keeping Alert buttons no longer did anything after installing Open Pilot and disabling the DSU. I wanted them back. So through some help from the internet and Comma Slack folks, I figured out what was needed.
 
-## Hardware
+## Hardware List (see bottom for links)
 * Arduino (I used a Duo)
 * CAN bus SPI board
 * Connectors and Wires
@@ -35,5 +35,14 @@ I have two cars that can use Open Pilot, and I have to move it between them some
 ## Code
 I've included some amateur code for the Arduino that reads the buttons, writes CAN and controls the relays. 
 
-For the CAN Bus SPI board I bought, you have to use a custom library on the Arduino, since the normal code doesn't support the slower clock speek (8mhz.) Here it is:
+For the CAN Bus SPI board I bought, you have to use a custom library on the Arduino, since the normal code doesn't support the slower clock speed (8mhz.) Here it is:
 https://github.com/Flori1989/MCP2515_lib
+
+### Hardware Links
+#### CAN Module I used:
+https://www.amazon.com/gp/product/B015W4D9WY/ref=oh_aui_detailpage_o01_s01?ie=UTF8&psc=1
+
+#### CAN Arduino Shield that I should have probably used instead:
+https://www.amazon.com/gp/product/B06XWQ4WF9/ref=oh_aui_detailpage_o05_s00?ie=UTF8&psc=1
+#### Relay Board:
+https://www.amazon.com/SunFounder-Channel-Optocoupler-Expansion-Raspberry/dp/B00E0NTPP4/ref=sr_1_3?ie=UTF8&qid=1520026106&sr=8-3&keywords=2+relay
