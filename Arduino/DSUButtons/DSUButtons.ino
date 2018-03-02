@@ -1,6 +1,7 @@
 #include <SPI.h>
 #include <mcp_can.h>
 
+//IO Pins
 const int fdistance = 3;
 const int lanewarn = 4;
 const int relayH = 5;
@@ -16,10 +17,11 @@ unsigned long previousMillis=0; // millis() returns an unsigned long.
 unsigned char stmp[5] = {0, 0, 0, 0, 0};
 unsigned char JOEL_ID[2] = {0, 0};
 unsigned char NEW_MSG_1[8] = {0};
-int fdistanceState = 1;
-int lanewarnState = 1;
 MCP_CAN CAN(SPI_CS_PIN); 
 
+//Logic variables
+int fdistanceState = 1;
+int lanewarnState = 1;
 int relaystate = 1; // 0 = DSU off
 
 
@@ -28,6 +30,7 @@ int relaystate = 1; // 0 = DSU off
  
 void setup()
 { 
+  //GPIO
   pinMode(fdistance, INPUT_PULLUP);
   pinMode(lanewarn, INPUT_PULLUP);
   pinMode(relayH, OUTPUT);
@@ -35,12 +38,13 @@ void setup()
 
   digitalWrite(relayH, relaystate); //Remember Relay is Backward - HIGH means off
   digitalWrite(relayL, relaystate);
-  
+
+  //Serial 
   Serial.begin(115200);
- //SPI (ADA & CAN)
+  
+ //SPI (CAN)
   SPI.begin();  
   SPI.setClockDivider(SPI_CLOCK_DIV2);
-  
   
  //CAN
     while (CAN_OK != CAN.begin(CAN_1000KBPS))              // init can bus : baudrate = 1000                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            00k
@@ -58,12 +62,12 @@ void setup()
 }
 
 
-////CAN INTERRUPT FUNCTION
+////CAN INTERRUPT FUNCTION (not sure how to use)
 //void MCP2515_ISR()
 //{
 //      flagRecv = 1;
 //}
-//
+
 ////SERIAL INPUT (unused)
 //void recvOneChar() {
 //    if (Serial.available() > 0) {
@@ -76,14 +80,12 @@ void loop()
 {
 
   fdistanceState = digitalRead(fdistance);
-  lanewarnState = digitalRead(lanewarn);
+  lanewarnState = digitalRead(lanewarn);  
 
-  
-
-  //CAN ----------------------------------------------------------------
-//  if (relaystate == 0) {
+  //CAN Write SUB-LOOP
+  // Only want to send messages every 100 ms
   unsigned long currentMillis = millis(); // grab current time
-  //check if "interval" time has passed (1000 milliseconds)
+  //check if "interval" time has passed (100 milliseconds)
   if ((unsigned long)(currentMillis - previousMillis) >= interval) {
 
     if (fdistanceState == LOW) {
@@ -101,7 +103,8 @@ void loop()
     CAN.sendMsgBuf(0x203, 0, 2, JOEL_ID);
     previousMillis = millis();
   }
-//  }
+
+  //CAN Read - not sure how to do yet
   if(flagRecv)                   // check if get data
       {
 
