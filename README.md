@@ -1,4 +1,4 @@
-# Reenable DSU Buttons on Rav4
+# Reenable DSU Buttons and Remotely Disable DSU on Rav4
 I noticed the following distance and Lane Keeping Alert buttons no longer did anything after installing Open Pilot and disabling the DSU. I wanted them back. So through some help from the internet and Comma Slack folks, I figured out what was needed.
 
 ## Hardware List (see bottom for links)
