@@ -5,6 +5,7 @@ I noticed the following distance and Lane Keeping Alert buttons no longer did an
 * Arduino (I used a Duo)
 * CAN bus SPI board
 * Connectors and Wires
+* Relay board if trying to disable/enable DSU
 
 ## Location
 Just about everything is done behind the glove compartment. Squeeze in the sides of the glove compartment until it comes loose, then disconnect the arm holding it in by pulling it to the left. Then just lift it out.
@@ -28,5 +29,11 @@ I already had a few CAN boards that use the SPI protocol to communicate with Ras
 
 It was then just a matter of connecting the pins to the arduino's digital IO, connecting the CAN board to the Arduino, and connecting the CAN board to the CAN bus in the same DSU connector. 
 
+## Automatically Disconnect/Reconnect DSU
+I have two cars that can use Open Pilot, and I have to move it between them sometimes. When I do, I need to re-enable the DSU (as well as changes some stuff on the EON) each time. I added some relays to allow that to be more automatic in this circuit as well. 
+
 ## Code
-I've included some amateur code for the Arduino that reads the buttons, writes CAN and controls some relays I added. (The relays are to disconnect the ECU from CAN when my EON is installed.)
+I've included some amateur code for the Arduino that reads the buttons, writes CAN and controls the relays. 
+
+For the CAN Bus SPI board I bought, you have to use a custom library on the Arduino, since the normal code doesn't support the slower clock speek (8mhz.) Here it is:
+https://github.com/Flori1989/MCP2515_lib
