@@ -4,8 +4,8 @@
 //IO Pins
 const int fdistance = 3;
 const int lanewarn = 4;
-const int relayH = 5;
-const int relayL = 6;
+const int relay1 = 5;
+const int relay2 = 6;
 
 //CAN
 const int SPI_CS_PIN = 9;
@@ -17,13 +17,15 @@ unsigned long previousMillis=0; // millis() returns an unsigned long.
 unsigned char stmp[5] = {0, 0, 0, 0, 0};
 unsigned char JOEL_ID[2] = {0, 0};
 unsigned char NEW_MSG_1[8] = {0};
-MCP_CAN CAN(SPI_CS_PIN); 
+MCP_CAN CAN(SPI_CS_PIN);
+int canSendId = 0x203;
 
 //Logic variables
 int fdistanceState = 1;
 int lanewarnState = 1;
+int lane100mscount = 0;
+int dist100mscount = 0;
 int relaystate = 1; // 0 = DSU off
-
 
 ////SERIAL INPUT (UNUSED)
 //char receivedChar;
@@ -31,13 +33,13 @@ int relaystate = 1; // 0 = DSU off
 void setup()
 { 
   //GPIO
-  pinMode(fdistance, INPUT_PULLUP);
+  pinMode(fdistance, INPUT);
   pinMode(lanewarn, INPUT_PULLUP);
-  pinMode(relayH, OUTPUT);
-  pinMode(relayL, OUTPUT);
+  pinMode(relay1, OUTPUT);
+  pinMode(relay2, OUTPUT);
 
-  digitalWrite(relayH, relaystate); //Remember Relay is Backward - HIGH means off
-  digitalWrite(relayL, relaystate);
+  digitalWrite(relay1, relaystate); //Remember Relay is Backward - HIGH means off
+  digitalWrite(relay2, relaystate);
 
   //Serial 
   Serial.begin(115200);
@@ -56,17 +58,15 @@ void setup()
     Serial.println("CAN BUS Shield init ok!");
 
 //  attachInterrupt(2, MCP2515_ISR, FALLING); // start interrupt for can
-//  CAN.init_Mask(0, 0, 0x3ff);                         // there are 2 mask in mcp2515, you need to set both of them
-//  CAN.init_Mask(1, 0, 0x3ff);
-//  CAN.init_Filt(0, 0, 0x200); //0x200
+  CAN.init_Mask(0, 0, 0x3ff); // there are 2 mask in mcp2515, you need to set both of them
+  CAN.init_Mask(1, 0, 0x3ff);
+  CAN.init_Filt(0, 0, 0x2c1);
+  CAN.init_Filt(1, 0, 0x2c1);
+  CAN.init_Filt(2, 0, 0x2c1);
+  CAN.init_Filt(3, 0, 0x2c1);
+  CAN.init_Filt(4, 0, 0x2c1);
+  CAN.init_Filt(5, 0, 0x2c1);
 }
-
-
-////CAN INTERRUPT FUNCTION (not sure how to use)
-//void MCP2515_ISR()
-//{
-//      flagRecv = 1;
-//}
 
 ////SERIAL INPUT (unused)
 //void recvOneChar() {
@@ -80,6 +80,7 @@ void loop()
 {
 
   fdistanceState = digitalRead(fdistance);
+  //Serial.println(fdistanceState);
   lanewarnState = digitalRead(lanewarn);  
 
   //CAN Write SUB-LOOP
@@ -90,37 +91,57 @@ void loop()
 
     if (fdistanceState == LOW) {
       JOEL_ID[0] = 0b10000000;
+      dist100mscount++;
     } else {
       JOEL_ID[0] = 0b00000000;
+      dist100mscount = 0;
     }
 
 
     if (lanewarnState == LOW) {
       JOEL_ID[1] = 0b10000000;
+      lane100mscount++;
     } else {
       JOEL_ID[1] = 0b00000000;
+      lane100mscount = 0;
     }
-    CAN.sendMsgBuf(0x203, 0, 2, JOEL_ID);
+    CAN.sendMsgBuf(canSendId, 0, 2, JOEL_ID);
+    //Serial.println(dist100mscount);
+    if ((fdistanceState == LOW) && (dist100mscount == 50)) {
+      dist100mscount = 0;
+      if (relaystate == 0){
+        relaystate = 1;
+        Serial.println("relay=1");
+        digitalWrite(relay1, relaystate);
+        digitalWrite(relay2, relaystate);
+      }
+      else if (relaystate == 1) {
+        relaystate = 0;
+        Serial.println("relay=0");
+        digitalWrite(relay1, relaystate);
+        digitalWrite(relay2, relaystate);
+      }
+    }
     previousMillis = millis();
   }
 
-  //CAN Read - not sure how to do yet
-  if(flagRecv)                   // check if get data
+
+  if(flagRecv)                   // check if CAN receive is enabled
       {
-
-        flagRecv = 0;                // clear flag
+        int CANID;
         CAN.readMsgBuf(&len, buf);    // read data,  len: data length, buf: data buf
-
-        Serial.println("\r\n------------------------------------------------------------------");
-        Serial.print("Get Data From id: ");
-        Serial.println(CAN.getCanId());
-        for(int i = 0; i<len; i++)    // print the data
-        {
-            Serial.print("0x");
-            Serial.print(buf[i], HEX);
-            Serial.print("\t");
+        CANID=CAN.getCanId();
+        if (CANID != canSendId) {
+          Serial.println("\r\n------------------------------------------------------------------");
+          Serial.print("Get Data From id: ");
+          Serial.println(CANID);
+         for(int i = 0; i<len; i++)    // print the data
+          {
+              Serial.print("0x");
+             Serial.print(buf[i], HEX);
+             Serial.print("\t");
+          }
+          Serial.println();
         }
-        Serial.println();
-
       }
 }
