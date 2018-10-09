@@ -9,7 +9,6 @@ const int relay2 = 6;
 
 //CAN
 const int SPI_CS_PIN = 9;
-unsigned char flagRecv = 0;
 unsigned char len = 3;
 unsigned char buf[8];
 unsigned long interval=100; // the time we need to wait
@@ -17,6 +16,8 @@ unsigned long previousMillis=0; // millis() returns an unsigned long.
 unsigned char stmp[5] = {0, 0, 0, 0, 0};
 unsigned char JOEL_ID[2] = {0, 0};
 unsigned char NEW_MSG_1[8] = {0};
+long unsigned int rxId;
+unsigned char rxBuf[8];
 MCP_CAN CAN(SPI_CS_PIN);
 int canSendId = 0x203;
 
@@ -25,7 +26,7 @@ int fdistanceState = 1;
 int lanewarnState = 1;
 int lane100mscount = 0;
 int dist100mscount = 0;
-int relaystate = 1; // 0 = DSU off
+int relaystate = 0; // 0 = DSU off?
 
 ////SERIAL INPUT (UNUSED)
 //char receivedChar;
@@ -37,7 +38,6 @@ void setup()
   pinMode(lanewarn, INPUT_PULLUP);
   pinMode(relay1, OUTPUT);
   pinMode(relay2, OUTPUT);
-
   digitalWrite(relay1, relaystate); //Remember Relay is Backward - HIGH means off
   digitalWrite(relay2, relaystate);
 
@@ -49,23 +49,19 @@ void setup()
   SPI.setClockDivider(SPI_CLOCK_DIV2);
   
  //CAN
-    while (CAN_OK != CAN.begin(CAN_1000KBPS))              // init can bus : baudrate = 1000                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            00k
-    {
-        Serial.println("CAN BUS Shield init fail");
-        Serial.println(" Init CAN BUS Shield again");
-        delay(100);
-    }
-    Serial.println("CAN BUS Shield init ok!");
+  if(CAN.begin(MCP_STDEXT, CAN_500KBPS, MCP_8MHZ) == CAN_OK) Serial.print("MCP2515 Init Okay!!\r\n");
+  else Serial.print("MCP2515 Init Failed!!\r\n");
+  pinMode(2, INPUT);                       // Setting pin 2 for /INT input
 
-//  attachInterrupt(2, MCP2515_ISR, FALLING); // start interrupt for can
-  CAN.init_Mask(0, 0, 0x3ff); // there are 2 mask in mcp2515, you need to set both of them
-  CAN.init_Mask(1, 0, 0x3ff);
-  CAN.init_Filt(0, 0, 0x2c1);
-  CAN.init_Filt(1, 0, 0x2c1);
-  CAN.init_Filt(2, 0, 0x2c1);
-  CAN.init_Filt(3, 0, 0x2c1);
-  CAN.init_Filt(4, 0, 0x2c1);
-  CAN.init_Filt(5, 0, 0x2c1);
+
+
+
+  CAN.init_Mask(0,0,0x03FFFFFF);                // Init first mask...
+  CAN.init_Mask(1,0,0x03FFFFFF);                // Init second mask... 
+  CAN.init_Filt(0,0,0x04140000);                // Init first filter...
+//  CAN.init_Filt(1,0,0x02010000);                // Init second filter...
+
+  CAN.setMode(MCP_NORMAL);                // Change to normal mode to allow messages to be transmitted
 }
 
 ////SERIAL INPUT (unused)
@@ -107,7 +103,7 @@ void loop()
     }
     CAN.sendMsgBuf(canSendId, 0, 2, JOEL_ID);
     //Serial.println(dist100mscount);
-    if ((fdistanceState == LOW) && (dist100mscount == 50)) {
+    if ((fdistanceState == LOW) && (dist100mscount == 10)) {
       dist100mscount = 0;
       if (relaystate == 0){
         relaystate = 1;
@@ -125,23 +121,32 @@ void loop()
     previousMillis = millis();
   }
 
-
-  if(flagRecv)                   // check if CAN receive is enabled
+  if(!digitalRead(2))                   // check if CAN receive is enabled
       {
-        int CANID;
-        CAN.readMsgBuf(&len, buf);    // read data,  len: data length, buf: data buf
-        CANID=CAN.getCanId();
-        if (CANID != canSendId) {
-          Serial.println("\r\n------------------------------------------------------------------");
-          Serial.print("Get Data From id: ");
-          Serial.println(CANID);
-         for(int i = 0; i<len; i++)    // print the data
-          {
-              Serial.print("0x");
-             Serial.print(buf[i], HEX);
-             Serial.print("\t");
-          }
-          Serial.println();
+      CAN.readMsgBuf(&rxId, &len, rxBuf); // Read data: len = data length, buf = data byte(s)
+//        Serial.print("ID: ");
+//        Serial.print(rxId, HEX);
+//        Serial.print(" Data: ");
+//        for(int i = 0; i<len; i++)           // Print each byte of the data
+//        {
+//          if(rxBuf[i] < 0x10)                // If data byte is less than 0x10, add a leading zero
+//          {
+//            Serial.print("0");
+//          }
+//          Serial.print(rxBuf[i], HEX);
+//          Serial.print(" ");
+//        }
+//        Serial.println();
+        if(rxBuf[6] == 0x16) {
+          Serial.println("EON NOT ON - Stock!");
         }
       }
+
+ // pseudo code:
+ // Start with DSU off.
+ // if we don't see an EON packet in x seconds, turn DSU on. (x is the maximum the DSU can stay off before a force-restart error occurs)
+ // Make the change permanent until next restart of car. Can stop looking for ID at that point.
+ // future: send a can packet to switch the DIPs as well
+ // and EON packet is defined as an id and data that only the EON puts out. So it can be both an ID and data -since most, if not all
+ // id's are common with the EON and the DSU. So we'd look at some of the "values.py" values that the EON always sends as an example packet.
 }
